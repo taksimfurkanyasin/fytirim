@@ -20,6 +20,10 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 def index():
     return send_from_directory(SCRIPT_DIR, "portfolio_tracker.html")
 
+@app.route("/ping")
+def ping():
+    return "ok", 200
+
 
 @app.route("/prices")
 def get_prices():
