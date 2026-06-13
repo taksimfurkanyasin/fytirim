@@ -378,8 +378,6 @@
     /* Grids */
     .summary-row2 { grid-template-columns: 1fr 1fr; gap: 10px; }
     .summary-page-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
-    .asset-def-grid { grid-template-columns: 1fr; }
-
     /* Portfolio total card: stack */
     .summary-card .card-wide { flex-direction: column; align-items: flex-start; gap: 10px; }
     .card-wide-right { align-items: flex-start !important; }
@@ -684,19 +682,6 @@
   .chart-empty { display:flex; align-items:center; justify-content:center; height:160px; color:var(--text3); font-size:0.8rem; }
 
 
-  /* ── Asset Definitions page ── */
-  .asset-def-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:14px; margin-bottom:24px; }
-  .asset-def-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px 18px; display:flex; flex-direction:column; gap:10px; }
-  .asset-def-card-header { display:flex; align-items:center; justify-content:space-between; }
-  .asset-def-ticker { font-family:'Syne',sans-serif; font-weight:700; font-size:1rem; color:var(--text); }
-  .asset-def-group { font-size:0.68rem; color:var(--text3); letter-spacing:0.06em; text-transform:uppercase; }
-  .asset-def-price { font-family:'Syne',sans-serif; font-size:1.2rem; font-weight:700; color:var(--accent); }
-  .asset-def-actions { display:flex; gap:6px; }
-  .asset-def-meta { font-size:0.72rem; color:var(--text2); }
-  .asset-def-add-card { background:var(--surface); border:1px dashed var(--border); border-radius:12px; padding:20px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; cursor:pointer; color:var(--text3); transition:all 0.15s; min-height:120px; }
-  .asset-def-add-card:hover { border-color:var(--accent); color:var(--accent); }
-
-
 
 
   /* Sidebar handle — sticks to right edge of sidebar */
@@ -919,10 +904,7 @@
 
   <div class="sidebar-footer">
     <input type="file" id="importInput" accept=".json" style="display:none;" onchange="importPortfolio(event)" />
-    <button class="btn-signoff" id="nav-assets" onclick="showPage('assets')" style="margin-bottom:6px;border-color:var(--border);color:var(--text2);">
-      <span style="font-size:1rem;">📋</span> Assets
-    </button>
-    <button class="btn-signoff" id="nav-profile" onclick="showPage('profile')" style="margin-bottom:6px;border-color:var(--border);color:var(--text2);">
+<button class="btn-signoff" id="nav-profile" onclick="showPage('profile')" style="margin-bottom:6px;border-color:var(--border);color:var(--text2);">
       <span style="font-size:1rem;">👤</span> Profile
     </button>
     <button class="btn-signoff" onclick="signOff()">
@@ -1129,12 +1111,6 @@
 
     <div class="form-grid">
       <div class="form-group full">
-        <label>Select Predefined Asset <span style="color:var(--text3);font-size:0.6rem;">optional</span></label>
-        <select id="f_assetSelect" onchange="onAssetSelect()">
-          <option value="">— Choose from defined assets or enter manually —</option>
-        </select>
-      </div>
-      <div class="form-group full">
         <label>Asset Type</label>
         <select id="f_type" onchange="onTypeChange()">
           <option value="stock-us">US Stocks</option>
@@ -1335,37 +1311,6 @@
   </div>
 </div><!-- /page-profile -->
 
-<!-- ASSETS PAGE -->
-<div class="page" id="page-assets">
-<div class="main">
-
-  <!-- ── TYPES SECTION ── -->
-  <div class="pf-summary-total" style="margin-bottom:24px;">
-    <div class="pf-summary-stat">
-      <div class="pf-summary-label">Asset Types</div>
-      <div class="pf-summary-val" id="typeCount">—</div>
-      <div class="pf-summary-sub">Types used to categorise your assets</div>
-    </div>
-    <button class="btn btn-primary" onclick="openTypeModal()">+ Add Type</button>
-  </div>
-  <div class="asset-def-grid" id="typeGrid" style="margin-bottom:36px;"></div>
-
-  <!-- ── ASSETS SECTION ── -->
-  <div class="pf-summary-total" style="margin-bottom:24px;">
-    <div class="pf-summary-stat">
-      <div class="pf-summary-label">Asset Definitions</div>
-      <div class="pf-summary-val" id="assetDefCount">—</div>
-      <div class="pf-summary-sub">Manual prices used as fallback when live data is unavailable</div>
-    </div>
-    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-      <div style="display:flex;gap:6px;flex-wrap:wrap;" id="assetGroupFilter"></div>
-      <button class="btn btn-primary" onclick="openAssetDefModal()">+ Add Asset</button>
-    </div>
-  </div>
-  <div class="asset-def-grid" id="assetDefGrid"></div>
-
-</div>
-</div><!-- /page-assets -->
 
 </div><!-- /content-wrap -->
 </div><!-- /app-shell -->
@@ -1390,12 +1335,10 @@ let activePortfolioId = null;     // id of currently viewed sub-portfolio
 
 // ── Load / Save ───────────────────────────────────────────────────────────
 async function loadUserData() {
-  const [{ data: pfs }, { data: allAssets }, { data: allHistory }, { data: grps }, { data: defs }] = await Promise.all([
+  const [{ data: pfs }, { data: allAssets }, { data: allHistory }] = await Promise.all([
     _sb.from('portfolios').select('*').eq('user_id', _sbUser.id),
     _sb.from('assets').select('*'),
     _sb.from('history').select('*'),
-    _sb.from('asset_groups').select('*').eq('user_id', _sbUser.id),
-    _sb.from('asset_defs').select('*').eq('user_id', _sbUser.id),
   ]);
 
   const pfIds = new Set((pfs || []).map(p => p.id));
@@ -1427,23 +1370,6 @@ async function loadUserData() {
         price: h.price,
         priceCurr: h.price_curr,
       })),
-    })),
-    assetGroups: (grps || []).map(g => ({
-      id: Number(g.id) || g.id,
-      name: g.name,
-      desc: g.description,
-      color: g.color,
-    })),
-    assetDefs: (defs || []).map(d => ({
-      id: Number(d.id) || d.id,
-      ticker: d.ticker,
-      name: d.name,
-      group: d.group_name,
-      type: d.type,
-      price: d.price,
-      currency: d.currency,
-      useFallback: d.use_fallback,
-      notes: d.notes,
     })),
   };
 }
@@ -1502,26 +1428,6 @@ async function saveUserData() {
       if (hErr) throw hErr;
     }
 
-    // ── Asset Groups ─────────────────────────────────────────────────
-    await _sb.from('asset_groups').delete().eq('user_id', uid);
-    if (userData.assetGroups?.length) {
-      await _sb.from('asset_groups').insert(
-        userData.assetGroups.map(g => ({ id: String(g.id), user_id: uid, name: g.name, description: g.desc || null, color: g.color }))
-      );
-    }
-
-    // ── Asset Defs ───────────────────────────────────────────────────
-    await _sb.from('asset_defs').delete().eq('user_id', uid);
-    if (userData.assetDefs?.length) {
-      await _sb.from('asset_defs').insert(
-        userData.assetDefs.map(d => ({
-          id: String(d.id), user_id: uid,
-          ticker: d.ticker || null, name: d.name || null, group_name: d.group || null,
-          type: d.type || null, price: d.price || null, currency: d.currency || null,
-          use_fallback: d.useFallback || false, notes: d.notes || null,
-        }))
-      );
-    }
   } catch (e) {
     console.error('Save error:', e);
     showToast('Cloud save failed: ' + e.message, 'error');
@@ -1560,16 +1466,6 @@ async function migrateFromLocalStorage() {
       (data.portfolios || []).forEach(pf => {
         if (!userData.portfolios.find(p => String(p.id) === String(pf.id)))
           userData.portfolios.push(pf);
-      });
-      if (!userData.assetGroups) userData.assetGroups = [];
-      (data.assetGroups || []).forEach(g => {
-        if (!userData.assetGroups.find(x => String(x.id) === String(g.id)))
-          userData.assetGroups.push(g);
-      });
-      if (!userData.assetDefs) userData.assetDefs = [];
-      (data.assetDefs || []).forEach(d => {
-        if (!userData.assetDefs.find(x => String(x.id) === String(d.id)))
-          userData.assetDefs.push(d);
       });
     } catch(e) { console.error('Error parsing key', key, e); }
   });
@@ -1714,9 +1610,6 @@ function getAssetValueUSD(a) {
     if (a.manualPrice) return (a.manualPrice / usdTry) * a.amount;
     const p = prices[a.ticker];
     if (p) return a.region === 'TURKEY' ? (p.price / usdTry) * a.amount : p.price * a.amount;
-    // Fallback to asset definition manual price
-    const fb = getDefFallbackPrice(a.ticker);
-    if (fb) return fb.priceUSD * a.amount;
     return 0;
   }
   if (a.type === 'silver') { const p = prices['__silver']; return p ? p.price * a.amount : 0; }
@@ -1944,17 +1837,7 @@ function showPage(page, pfId) {
     return;
   }
 
-  if (page === 'assets') {
-    header.style.display = 'none';
-    document.getElementById('page-assets').classList.add('active');
-    const assetsBtn = document.getElementById('nav-assets');
-    if (assetsBtn) { assetsBtn.style.borderColor = 'var(--accent)'; assetsBtn.style.color = 'var(--accent)'; }
-    renderAssetDefs();
-    return;
-  }
-  // Reset assets + profile button style when leaving those pages
-  const assetsBtn = document.getElementById('nav-assets');
-  if (assetsBtn) { assetsBtn.style.borderColor = ''; assetsBtn.style.color = ''; }
+  // Reset profile button style when leaving that page
   const profBtn = document.getElementById('nav-profile');
   if (profBtn) { profBtn.style.borderColor = ''; profBtn.style.color = ''; }
   header.style.display = '';
@@ -2104,9 +1987,6 @@ function getAssetValueUSDFor(a) {
     if (a.manualPrice) return (a.manualPrice / usdTry) * a.amount;
     const p = prices[a.ticker];
     if (p) return a.region === 'TURKEY' ? (p.price / usdTry) * a.amount : p.price * a.amount;
-    // Fallback to asset definition manual price
-    const fb = getDefFallbackPrice(a.ticker);
-    if (fb) return fb.priceUSD * a.amount;
     return 0;
   }
   if (a.type === 'silver') { const p = prices['__silver']; return p ? p.price * a.amount : 0; }
@@ -2177,30 +2057,6 @@ const TOUR_STEPS = [
     scrollTo:  true,
   },
   {
-    page:      'assets',
-    target:    '#nav-assets',
-    title:     'Assets',
-    body:      'Define your asset types and individual tickers here. Find this in the bottom of the menu, above Profile.',
-    placement: 'top',
-    navigate:  'assets',
-  },
-  {
-    page:      'assets',
-    target:    '#tour-btn-addtype',
-    title:     'Add Asset Types',
-    body:      'First define your asset types — categories like US Stocks, TR Stocks, BES. These organise your assets.',
-    placement: 'bottom',
-    keepSidebar: true,
-  },
-  {
-    page:      'assets',
-    target:    '#tour-btn-addasset',
-    title:     'Define Assets',
-    body:      'Then define individual assets with a ticker, type, and manual fallback price.',
-    placement: 'left',
-    keepSidebar: true,
-  },
-  {
     page:    'profile',
     target:  '#nav-profile',
     title:   'Profile & Settings',
@@ -2227,14 +2083,6 @@ function startTour() {
   _tourActive = true;
 
   // ── Assign stable IDs to buttons that have no ID in static HTML ──────
-  // "+ Add Type" button on the assets page
-  const addTypeBtn = document.querySelector('#page-assets .btn-primary[onclick*="openTypeModal"]');
-  if (addTypeBtn) addTypeBtn.id = 'tour-btn-addtype';
-
-  // "+ Add Asset" (definition) button on the assets page
-  const addDefBtn = document.querySelector('#page-assets .btn-primary[onclick*="openAssetDefModal"]');
-  if (addDefBtn) addDefBtn.id = 'tour-btn-addasset';
-
   // "+ New Portfolio" button on the summary page
   const newPfBtn = document.querySelector('#page-summary .btn-primary[onclick*="createPortfolio"]');
   if (newPfBtn) newPfBtn.id = 'tour-btn-newportfolio';
@@ -2937,73 +2785,12 @@ function deleteHistoryRecord(realIdx) {
 // ADD ASSET
 // ═══════════════════════════════════════════════════════════════════════
 
-function populateAssetSelect() {
-  const sel  = document.getElementById('f_assetSelect');
-  if (!sel) return;
-  const defs = getAssetDefs();
-  const types = getAssetTypes();
-  // Group options by type
-  const byType = {};
-  defs.forEach(d => {
-    const t = d.type || 'Other';
-    if (!byType[t]) byType[t] = [];
-    byType[t].push(d);
-  });
-  let html = '<option value="">— Choose from defined assets or enter manually —</option>';
-  Object.entries(byType).forEach(([type, assets]) => {
-    html += '<optgroup label="' + type + '">';
-    assets.forEach(a => {
-      const label = a.ticker + (a.name ? ' – ' + a.name : '');
-      html += '<option value="' + a.ticker + '">' + label + '</option>';
-    });
-    html += '</optgroup>';
-  });
-  sel.innerHTML = html;
-}
-
-function onAssetSelect() {
-  const ticker = document.getElementById('f_assetSelect').value;
-  if (!ticker) return;
-  const def = getAssetDefs().find(d => d.ticker === ticker);
-  if (!def) return;
-
-  // Auto-fill fields from definition
-  document.getElementById('f_ticker').value = def.ticker;
-
-  // Set type
-  const typeMap = {
-    'stock-us': 'stock-us', 'stock-tr': 'stock-tr',
-    'silver': 'silver', 'bes': 'bes', 'insurance': 'insurance'
-  };
-  // Match def type to f_type options
-  const typeEl = document.getElementById('f_type');
-  const matchOpt = Array.from(typeEl.options).find(o =>
-    o.value === def.type ||
-    o.text.toLowerCase().includes((def.type||'').toLowerCase())
-  );
-  if (matchOpt) {
-    typeEl.value = matchOpt.value;
-    onTypeChange();
-  }
-
-  // Auto-fill price if fallback defined
-  if (def.price && def.useFallback) {
-    document.getElementById('f_buyPrice').value = def.price;
-    document.getElementById('f_buyPriceCurr').value = def.currency || 'TRY';
-    if (def.type === 'stock' || def.type === 'stock-us' || def.type === 'stock-tr') {
-      document.getElementById('f_manualPrice').value = def.price;
-    }
-  }
-}
 function openAddModal() {
   document.getElementById('f_date').value = new Date().toISOString().split('T')[0];
   document.getElementById('f_amount').value = '';
   document.getElementById('f_buyPrice').value = '';
   document.getElementById('f_ticker').value = '';
   document.getElementById('f_manualPrice').value = '';
-  const selEl = document.getElementById('f_assetSelect');
-  if (selEl) selEl.value = '';
-  populateAssetSelect();
   document.getElementById('addModal').classList.add('open');
   onTypeChange();
 }
@@ -3391,7 +3178,7 @@ function deletePortfolio(id) {
     if (activePortfolioId === id) {
       portfolio = null;
       activePortfolioId = null;
-      showPage('assets');
+      showPage('summary');
       checkFirstLogin();
     } else {
       renderSummaryPage();
@@ -4294,332 +4081,6 @@ function exportAllXLSX() {
 }
 
 
-
-// ═══════════════════════════════════════════════════════════════════════
-// ASSET TYPES
-// ═══════════════════════════════════════════════════════════════════════
-const GROUP_COLOURS = ['#b5e550','#5b9cf6','#f97b4c','#c0c8b8','#72c472','#c084fc','#f0a45c','#e0607e','#38bdf8','#facc15'];
-let _editingGroupId = null;
-
-function getAssetTypes() {
-  if (!userData.assetGroups) {
-    // Seed default groups
-    userData.assetGroups = [
-      { id: 1, name: 'US Stocks',  desc: 'US-listed equities',        color: '#5b9cf6' },
-      { id: 2, name: 'TR Stocks',  desc: 'BIST-listed equities',      color: '#f97b4c' },
-      { id: 3, name: 'Emtia',      desc: 'Commodities & precious metals', color: '#c0c8b8' },
-      { id: 4, name: 'BES',        desc: 'Bireysel Emeklilik',        color: '#72c472' },
-      { id: 5, name: 'Insurance',  desc: 'Hayat Sigortası',           color: '#c084fc' },
-      { id: 6, name: 'Crypto',     desc: 'Cryptocurrencies',          color: '#facc15' },
-    ];
-  }
-  return userData.assetGroups; // stored as assetGroups for back-compat
-}
-
-function renderTypes() {
-  const groups = getAssetTypes();
-  const grid   = document.getElementById('typeGrid');
-  const countEl = document.getElementById('typeCount');
-  if (countEl) countEl.textContent = groups.length + ' group' + (groups.length !== 1 ? 's' : '');
-  if (!grid) return;
-
-  grid.innerHTML = groups.map(g => {
-    const assetCount = (userData.assetDefs || []).filter(d => d.type === g.id.toString() || d.group === g.name).length;
-    return '<div class="asset-def-card" style="border-top:3px solid '+g.color+';">' +
-      '<div class="asset-def-card-header">' +
-        '<div>' +
-          '<div class="asset-def-ticker" style="color:'+g.color+';">'+g.name+'</div>' +
-          (g.desc ? '<div class="asset-def-group">'+g.desc+'</div>' : '') +
-        '</div>' +
-        '<div class="asset-def-actions">' +
-          '<button class="icon-btn edit" onclick="openTypeModal('+g.id+')">✎</button>' +
-          '<button class="icon-btn delete" onclick="deleteType('+g.id+')">✕</button>' +
-        '</div>' +
-      '</div>' +
-      '<div class="asset-def-meta">'+assetCount+' asset' + (assetCount !== 1 ? 's' : '')+'</div>' +
-    '</div>';
-  }).join('') +
-  '<div class="asset-def-add-card" onclick="openTypeModal()">' +
-  '<span style="font-size:1.5rem;">+</span><span style="font-size:0.8rem;">New Group</span></div>';
-}
-
-function openTypeModal(id) {
-  _editingGroupId = id || null;
-  const groups = getAssetTypes();
-  const title  = document.getElementById('typeModalTitle');
-
-  // Build colour picker
-  let selColor = GROUP_COLOURS[groups.length % GROUP_COLOURS.length];
-  if (id) {
-    const g = groups.find(x => x.id === id);
-    if (g) {
-      selColor = g.color;
-      title.textContent = '✎ Edit Type';
-      document.getElementById('at_name').value = g.name;
-      document.getElementById('at_desc').value = g.desc || '';
-    }
-  } else {
-    title.textContent = '+ Add Type';
-    document.getElementById('at_name').value = '';
-    document.getElementById('at_desc').value = '';
-  }
-
-  const picker = document.getElementById('at_colorPicker');
-  picker.innerHTML = GROUP_COLOURS.map(col =>
-    '<div onclick="selectGroupColor(this,this.dataset.c)" data-c="'+col+'" style="width:22px;height:22px;border-radius:50%;background:'+col+';cursor:pointer;border:2px solid '+(col===selColor?'var(--text)':'transparent')+';transition:border 0.15s;"></div>'
-  ).join('');
-  picker.dataset.selected = selColor;
-
-  document.getElementById('assetTypeModal').classList.add('open');
-  setTimeout(() => document.getElementById('at_name').focus(), 80);
-}
-
-function selectGroupColor(el, color) {
-  const c = color || el.dataset.c;
-  el.parentElement.dataset.selected = c;
-  el.parentElement.querySelectorAll('div').forEach(d => d.style.border = '2px solid transparent');
-  el.style.border = '2px solid var(--text)';
-}
-
-async function submitGroup() {
-  const name  = document.getElementById('at_name').value.trim();
-  const desc  = document.getElementById('at_desc').value.trim();
-  const color = document.getElementById('at_colorPicker').dataset.selected || '#b5e550';
-  if (!name) { showToast('Group name is required', 'error'); return; }
-
-  const groups = getAssetTypes();
-  if (_editingGroupId) {
-    const idx = groups.findIndex(g => g.id === _editingGroupId);
-    if (idx >= 0) {
-      const oldName = groups[idx].name;
-      groups[idx] = { ...groups[idx], name, desc, color };
-      (userData.assetDefs||[]).forEach(d => { if (d.group === oldName) d.group = name; });
-    }
-    if (_sbUser) await _sb.from('asset_groups').update({ name, description: desc || null, color }).eq('id', String(_editingGroupId)).eq('user_id', _sbUser.id);
-    showToast('Group updated', 'success');
-  } else {
-    if (groups.find(g => g.name === name)) { showToast(name+' already exists', 'error'); return; }
-    const newG = { id: Date.now(), name, desc, color };
-    groups.push(newG);
-    if (_sbUser) await _sb.from('asset_groups').insert({ id: String(newG.id), user_id: _sbUser.id, name, description: desc || null, color });
-    showToast('"'+name+'" group added', 'success');
-  }
-
-  userData.assetGroups = groups;
-  closeModal('assetTypeModal');
-  renderTypes();
-  renderAssetDefs();
-}
-
-function deleteType(id) {
-  const groups = getAssetTypes();
-  const g = groups.find(x => x.id === id);
-  if (!g) return;
-  _openDialog({
-    icon: '⚠️', title: 'Delete Group',
-    msg: 'Delete "'+g.name+'"? Assets in this group will have their group cleared.',
-    confirmLabel: 'Delete', confirmClass: 'btn-danger'
-  }, async ok => {
-    if (!ok) return;
-    userData.assetGroups = groups.filter(x => x.id !== id);
-    (userData.assetDefs||[]).forEach(d => { if (d.group === g.name) d.group = ''; });
-    renderTypes(); renderAssetDefs(); showToast('"'+g.name+'" deleted', 'info');
-    if (_sbUser) await _sb.from('asset_groups').delete().eq('id', String(id)).eq('user_id', _sbUser.id);
-  });
-}
-
-
-function populateTypeSelect(currentType) {
-  const sel = document.getElementById('ad_type');
-  if (!sel) return;
-  const types = getAssetTypes();
-  sel.innerHTML = '<option value="">— Select Type —</option>' +
-    types.map(t => '<option value="'+t.name+'"'+(t.name===currentType?' selected':'')+'>'+t.name+'</option>').join('');
-}
-function populateGroupSelect(currentGroup) {
-  const sel = document.getElementById('ad_group');
-  if (!sel) return;
-  const groups = getAssetTypes();
-  sel.innerHTML = '<option value="">— No Group —</option>' +
-    groups.map(g => '<option value="'+g.name+'"'+(g.name === currentGroup?' selected':'')+'>'+g.name+'</option>').join('');
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// ASSET DEFINITIONS
-// ═══════════════════════════════════════════════════════════════════════
-// Stored in userData.assetDefs = [ { id, ticker, name, group, type, price, currency, useFallback, notes } ]
-
-function getAssetDefs() {
-  if (!userData.assetDefs) userData.assetDefs = [];
-  return userData.assetDefs;
-}
-
-let _editingDefId   = null;
-let _activeDefGroup = '';
-
-// ── Render the asset definitions page ────────────────────────────────────
-function renderAssetDefs() {
-  const defs   = getAssetDefs();
-  const groups = getAssetTypes();
-
-  // Also render types section
-  renderTypes();
-
-  // Filter bar uses defined types
-  const allTypes  = getAssetTypes();
-  const usedTypes = [...new Set(defs.map(d => d.type).filter(Boolean))];
-  const filterBar = document.getElementById('assetGroupFilter');
-  if (filterBar) {
-    const shownTypes = allTypes.filter(t => usedTypes.includes(t.name));
-    filterBar.innerHTML = '<button class="chart-range-btn' + ('' === _activeDefGroup ? ' active' : '') + '" onclick="filterAssetGroup(\'\')">All</button>' +
-      shownTypes.map(t =>
-        '<button class="chart-range-btn' + (t.name === _activeDefGroup ? ' active' : '') + '"' +
-        ' onclick="filterAssetGroup(' + JSON.stringify(t.name) + ')">' + t.name + '</button>'
-      ).join('');
-  }
-  const countEl = document.getElementById('assetDefCount');
-  if (countEl) countEl.textContent = defs.length + ' asset' + (defs.length !== 1 ? 's' : '') + ' defined';
-
-  // Filter by group
-  const filtered = _activeDefGroup
-    ? defs.filter(d => d.type === _activeDefGroup)
-    : defs;
-
-  const grid = document.getElementById('assetDefGrid');
-  if (!grid) return;
-
-  if (!filtered.length) {
-    grid.innerHTML =
-      '<div class="asset-def-add-card" onclick="openAssetDefModal()">' +
-      '<span style="font-size:1.5rem;">+</span>' +
-      '<span style="font-size:0.8rem;">Define your first asset</span>' +
-      '</div>';
-    return;
-  }
-
-  grid.innerHTML = filtered.map(d => {
-    const priceStr = d.price
-      ? d.price.toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:4}) + ' ' + (d.currency || 'TRY')
-      : '—';
-    const typeMap = {'stock-us':'US Stock','stock-tr':'TR Stock','silver':'Emtia','bes':'BES','insurance':'Sigorta','crypto':'Crypto','other':'Other'};
-    return '<div class="asset-def-card">' +
-      '<div class="asset-def-card-header">' +
-        '<div>' +
-          '<div class="asset-def-ticker">' + d.ticker + '</div>' +
-          '<div class="asset-def-group">' + (d.type || 'No Type') + '</div>' +
-        '</div>' +
-        '<div class="asset-def-actions">' +
-          '<button class="icon-btn edit" title="Edit" onclick="openAssetDefModal(' + d.id + ')">✎</button>' +
-          '<button class="icon-btn delete" title="Delete" onclick="deleteAssetDef(' + d.id + ')">✕</button>' +
-        '</div>' +
-      '</div>' +
-      (d.name ? '<div class="asset-def-meta">' + d.name + '</div>' : '') +
-      '<div style="display:flex;align-items:center;justify-content:space-between;">' +
-        '<div class="asset-def-price">' + priceStr + '</div>' +
-        (d.useFallback ? '<span style="font-size:0.62rem;padding:2px 7px;border-radius:5px;background:rgba(181,229,80,0.12);color:var(--accent);">Fallback</span>' : '') +
-      '</div>' +
-      (d.notes ? '<div class="asset-def-meta" style="font-style:italic;">' + d.notes + '</div>' : '') +
-    '</div>';
-  }).join('') +
-  '<div class="asset-def-add-card" onclick="openAssetDefModal()">' +
-  '<span style="font-size:1.5rem;">+</span>' +
-  '<span style="font-size:0.8rem;">Add Asset</span>' +
-  '</div>';
-}
-
-function filterAssetGroup(group) {
-  _activeDefGroup = group;
-  renderAssetDefs();
-}
-
-// ── Modal open / submit ───────────────────────────────────────────────────
-function openAssetDefModal(id) {
-  _editingDefId = id || null;
-  const modal = document.getElementById('assetDefModal');
-  const title = document.getElementById('assetDefModalTitle');
-
-  if (id) {
-    const def = getAssetDefs().find(d => d.id === id);
-    if (!def) return;
-    populateGroupSelect(def.group || '');
-    title.textContent = '✎ Edit Asset Definition';
-    populateTypeSelect(def.type || '');
-    document.getElementById('ad_ticker').value      = def.ticker || '';
-    document.getElementById('ad_name').value        = def.name || '';
-    document.getElementById('ad_type').value        = def.type || 'stock-us';
-    document.getElementById('ad_price').value       = def.price || '';
-    document.getElementById('ad_currency').value    = def.currency || 'TRY';
-    document.getElementById('ad_notes').value       = def.notes || '';
-    document.getElementById('ad_useFallback').checked = !!def.useFallback;
-  } else {
-    title.textContent = '+ Add Asset Definition';
-    populateTypeSelect(_activeDefGroup || '');
-    document.getElementById('ad_ticker').value      = '';
-    document.getElementById('ad_name').value        = '';
-    document.getElementById('ad_type').value        = 'stock-us';
-    document.getElementById('ad_price').value       = '';
-    document.getElementById('ad_currency').value    = 'TRY';
-    document.getElementById('ad_notes').value       = '';
-    document.getElementById('ad_useFallback').checked = true;
-  }
-  modal.classList.add('open');
-  setTimeout(() => document.getElementById('ad_ticker').focus(), 80);
-}
-
-async function submitAssetDef() {
-  const ticker = document.getElementById('ad_ticker').value.trim().toUpperCase();
-  const name   = document.getElementById('ad_name').value.trim();
-  const type   = document.getElementById('ad_type').value;
-  const price  = parseFloat(document.getElementById('ad_price').value) || null;
-  const curr   = document.getElementById('ad_currency').value;
-  const notes  = document.getElementById('ad_notes').value.trim();
-  const useFb  = document.getElementById('ad_useFallback').checked;
-
-  if (!ticker) { showToast('Ticker is required', 'error'); return; }
-  if (!type)   { showToast('Select an asset type', 'error'); return; }
-
-  const defs = getAssetDefs();
-
-  if (_editingDefId) {
-    const idx = defs.findIndex(d => d.id === _editingDefId);
-    if (idx >= 0) defs[idx] = { ...defs[idx], ticker, name, type, price, currency: curr, notes, useFallback: useFb };
-    if (_sbUser) await _sb.from('asset_defs').update({ ticker, name: name||null, type: type||null, price: price||null, currency: curr, use_fallback: useFb, notes: notes||null }).eq('id', String(_editingDefId)).eq('user_id', _sbUser.id);
-    showToast('Asset updated', 'success');
-  } else {
-    if (defs.find(d => d.ticker === ticker)) { showToast(ticker + ' already defined — edit existing entry', 'error'); return; }
-    const newDef = { id: Date.now(), ticker, name, type, price, currency: curr, notes, useFallback: useFb };
-    defs.push(newDef);
-    if (_sbUser) await _sb.from('asset_defs').insert({ id: String(newDef.id), user_id: _sbUser.id, ticker, name: name||null, group_name: null, type: type||null, price: price||null, currency: curr, use_fallback: useFb, notes: notes||null });
-    showToast(ticker + ' defined', 'success');
-  }
-
-  userData.assetDefs = defs;
-  closeModal('assetDefModal');
-  renderAssetDefs();
-}
-
-function deleteAssetDef(id) {
-  _openDialog({
-    icon: '🗑', title: 'Delete Definition',
-    msg: 'Remove this asset definition? Assets using it in portfolios are unaffected.',
-    confirmLabel: 'Delete', confirmClass: 'btn-danger'
-  }, async ok => {
-    if (!ok) return;
-    userData.assetDefs = getAssetDefs().filter(d => d.id !== id);
-    renderAssetDefs(); showToast('Definition removed', 'info');
-    if (_sbUser) await _sb.from('asset_defs').delete().eq('id', String(id)).eq('user_id', _sbUser.id);
-  });
-}
-
-// ── Fallback price lookup: called by getAssetValueUSDFor when live price missing ──
-function getDefFallbackPrice(ticker) {
-  const def = getAssetDefs().find(d => d.ticker === ticker && d.useFallback && d.price);
-  if (!def) return null;
-  // Convert to USD
-  if (def.currency === 'USD') return { priceUSD: def.price };
-  return { priceUSD: def.price / usdTry };
-}
-
 // ═══════════════════════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════════════════════
@@ -4653,81 +4114,6 @@ checkAuth();
     </div>
   </div>
 </div>
-
-<!-- ── ASSET DEFINITION MODAL ── -->
-<div class="modal-overlay" id="assetDefModal">
-  <div class="modal" style="width:460px;">
-    <div class="modal-title" id="assetDefModalTitle">+ Add Asset Definition</div>
-    <div class="form-grid">
-      <div class="form-group">
-        <label>Ticker / Symbol</label>
-        <input type="text" id="ad_ticker" placeholder="e.g. AMZN, THYAO" style="text-transform:uppercase;" />
-      </div>
-      <div class="form-group">
-        <label>Display Name</label>
-        <input type="text" id="ad_name" placeholder="e.g. Amazon, Türk Hava Yolları" />
-      </div>
-      <div class="form-group full">
-        <label>Asset Type</label>
-        <select id="ad_type">
-          <option value="">— Select Type —</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Manual Price</label>
-        <input type="number" id="ad_price" placeholder="Fallback price" step="any" min="0" />
-      </div>
-      <div class="form-group">
-        <label>Price Currency</label>
-        <select id="ad_currency">
-          <option value="TRY">TRY ₺</option>
-          <option value="USD">USD $</option>
-        </select>
-      </div>
-      <div class="form-group full">
-        <label>Notes</label>
-        <input type="text" id="ad_notes" placeholder="Optional notes…" />
-      </div>
-      <div class="form-group full" style="display:flex;align-items:center;gap:10px;">
-        <input type="checkbox" id="ad_useFallback" style="width:15px;height:15px;accent-color:var(--accent);" />
-        <label style="text-transform:none;font-size:0.78rem;color:var(--text2);cursor:pointer;" for="ad_useFallback">
-          Use manual price as fallback when live price is unavailable
-        </label>
-      </div>
-    </div>
-    <div class="modal-actions">
-      <button class="btn btn-ghost" onclick="closeModal('assetDefModal')">Cancel</button>
-      <button class="btn btn-primary" onclick="submitAssetDef()">Save</button>
-    </div>
-  </div>
-</div>
-
-<!-- ── ASSET GROUP MODAL ── -->
-<div class="modal-overlay" id="assetTypeModal">
-  <div class="modal" style="width:400px;">
-    <div class="modal-title" id="typeModalTitle">+ Add Group</div>
-    <div class="form-grid">
-      <div class="form-group full">
-        <label>Group Name</label>
-        <input type="text" id="at_name" placeholder="e.g. US Stocks, BIST, Crypto" />
-      </div>
-      <div class="form-group full">
-        <label>Description <span style="color:var(--text3);font-size:0.6rem;">optional</span></label>
-        <input type="text" id="at_desc" placeholder="Short description…" />
-      </div>
-      <div class="form-group full">
-        <label>Colour</label>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;" id="at_colorPicker"></div>
-      </div>
-    </div>
-    <div class="modal-actions">
-      <button class="btn btn-ghost" onclick="closeModal('assetTypeModal')">Cancel</button>
-      <button class="btn btn-primary" onclick="submitGroup()">Save</button>
-    </div>
-  </div>
-</div>
-
-
 
 <!-- ── TUTORIAL TOUR ── -->
 <div id="tourHighlight" class="tour-highlight" style="display:none;"></div>
